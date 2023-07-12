@@ -1,0 +1,2 @@
+doc:
+	gomarkdoc . > doc.md
