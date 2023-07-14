@@ -2,9 +2,15 @@ package gw3
 
 import (
 	"bytes"
+	"context"
 	"fmt"
-	"net/http"
+	gohttp "net/http"
 	"path"
+
+	ipfsfiles "github.com/ipfs/boxo/files"
+
+	"github.com/photon-storage/go-gw3/common/http"
+	car "github.com/photon-storage/go-ipfs-car"
 )
 
 const (
@@ -17,7 +23,7 @@ func (c *Client) DAGAdd(root, path string, data []byte) (string, error) {
 		return "", err
 	}
 
-	req, err := http.NewRequest(http.MethodPut, url, bytes.NewReader(data))
+	req, err := gohttp.NewRequest(gohttp.MethodPut, url, bytes.NewReader(data))
 	if err != nil {
 		return "", err
 	}
@@ -33,8 +39,8 @@ func (c *Client) DAGAdd(root, path string, data []byte) (string, error) {
 
 func (c *Client) AuthDAGAdd(root, filePath string, size int) (string, error) {
 	p := path.Join(root, filePath)
-	req, err := http.NewRequest(
-		http.MethodPut,
+	req, err := gohttp.NewRequest(
+		gohttp.MethodPut,
 		fmt.Sprintf(
 			"%s/ipfs/%s?size=%d",
 			c.endPoint,
@@ -53,8 +59,8 @@ func (c *Client) AuthDAGAdd(root, filePath string, size int) (string, error) {
 
 func (c *Client) AuthDAGRemove(root, filePath string) (string, error) {
 	p := path.Join(root, filePath)
-	req, err := http.NewRequest(
-		http.MethodDelete,
+	req, err := gohttp.NewRequest(
+		gohttp.MethodDelete,
 		fmt.Sprintf("%s/ipfs/%s", c.endPoint, p),
 		nil,
 	)
@@ -72,7 +78,7 @@ func (c *Client) DAGRemove(root, path string) (string, error) {
 		return "", err
 	}
 
-	req, err := http.NewRequest(http.MethodDelete, url, nil)
+	req, err := gohttp.NewRequest(gohttp.MethodDelete, url, nil)
 	if err != nil {
 		return "", err
 	}
@@ -84,4 +90,65 @@ func (c *Client) DAGRemove(root, path string) (string, error) {
 
 	defer resp.Body.Close()
 	return resp.Header.Get("IPFS-Hash"), nil
+}
+
+func (c *Client) AuthDAGImport(size int, boundary string) (string, error) {
+	req, err := gohttp.NewRequest(
+		gohttp.MethodPost,
+		fmt.Sprintf("%s/api/v0/dag/import", c.endPoint),
+		nil,
+	)
+	if err != nil {
+		return "", err
+	}
+
+	query := req.URL.Query()
+	query.Set(http.ParamP3Size, fmt.Sprintf("%v", size))
+	query.Set(http.ParamP3Boundary, boundary)
+	req.URL.RawQuery = query.Encode()
+
+	var r redirect
+	return r.URL, c.callGateway(req, &r)
+}
+
+func (c *Client) DAGImport(src any) (string, error) {
+	b := car.NewBuilder()
+	v1car, err := b.Buildv1(context.TODO(), src, car.ImportOpts.CIDv1())
+	if err != nil {
+		return "", err
+	}
+
+	buf := bytes.Buffer{}
+	if err := v1car.Write(&buf); err != nil {
+		return "", err
+	}
+
+	r := ipfsfiles.NewMultiFileReader(
+		ipfsfiles.NewMapDirectory(map[string]ipfsfiles.Node{
+			"path": ipfsfiles.NewBytesFile(buf.Bytes()),
+		}),
+		true,
+	)
+
+	url, err := c.AuthDAGImport(buf.Len(), r.Boundary())
+	if err != nil {
+		return "", err
+	}
+
+	req, err := gohttp.NewRequest(gohttp.MethodPost, url, r)
+	if err != nil {
+		return "", err
+	}
+
+	resp, err := c.hc.Do(req)
+	if err != nil {
+		return "", err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != gohttp.StatusOK {
+		return "", fmt.Errorf("unexpected status code: %v", resp.StatusCode)
+	}
+
+	return v1car.Root().String(), nil
 }
