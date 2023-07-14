@@ -17,6 +17,7 @@ const (
 	EmptyDAGRoot = "QmUNLLsPACCz1vLxQVkXqqLX5R1X345qqfHbsf67hvA3Nn"
 )
 
+// DAGAdd adds a new CID and path to the existing dag, generating a new dag root.
 func (c *Client) DAGAdd(root, path string, data []byte) (string, error) {
 	url, err := c.AuthDAGAdd(root, path, len(data))
 	if err != nil {
@@ -37,6 +38,7 @@ func (c *Client) DAGAdd(root, path string, data []byte) (string, error) {
 	return resp.Header.Get("IPFS-Hash"), nil
 }
 
+// AuthDAGAdd requests Gateway3 for an authorized redirect URL for subsequently adding a new CID and path to the existing dag.
 func (c *Client) AuthDAGAdd(root, filePath string, size int) (string, error) {
 	p := path.Join(root, filePath)
 	req, err := gohttp.NewRequest(
@@ -57,6 +59,7 @@ func (c *Client) AuthDAGAdd(root, filePath string, size int) (string, error) {
 	return r.URL, c.callGateway(req, &r)
 }
 
+// AuthDAGRemove requests Gateway3 for an authorized redirect URL for subsequently removing a path from the existing dag, generating a new dag root.
 func (c *Client) AuthDAGRemove(root, filePath string) (string, error) {
 	p := path.Join(root, filePath)
 	req, err := gohttp.NewRequest(
@@ -72,6 +75,7 @@ func (c *Client) AuthDAGRemove(root, filePath string) (string, error) {
 	return r.URL, c.callGateway(req, &r)
 }
 
+// DAGRemove removes a path from the existing dag, generating a new dag root.
 func (c *Client) DAGRemove(root, path string) (string, error) {
 	url, err := c.AuthDAGRemove(root, path)
 	if err != nil {
@@ -92,6 +96,7 @@ func (c *Client) DAGRemove(root, path string) (string, error) {
 	return resp.Header.Get("IPFS-Hash"), nil
 }
 
+// AuthDAGImport requests Gateway3 for an authorized redirect URL for uploading a CAR file.
 func (c *Client) AuthDAGImport(size int, boundary string) (string, error) {
 	req, err := gohttp.NewRequest(
 		gohttp.MethodPost,
@@ -111,6 +116,7 @@ func (c *Client) AuthDAGImport(size int, boundary string) (string, error) {
 	return r.URL, c.callGateway(req, &r)
 }
 
+// DAGImport imports the given src input as a CAR format and returns its root CID. The `src` can be a path to a directory, a byte array or a io.Reader.
 func (c *Client) DAGImport(src any) (string, error) {
 	b := car.NewBuilder()
 	v1car, err := b.Buildv1(context.TODO(), src, car.ImportOpts.CIDv1())
