@@ -28,4 +28,11 @@ func main() {
 		panic(err)
 	}
 	fmt.Println("Removed the /example.txt, CID is: ", cid)
+
+	// Remove the /example.txt from the DAG that we just created.
+	cid, err = client.DAGImport("./example")
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println("Imported ./example directory as DAG, CID is: ", cid)
 }
