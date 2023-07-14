@@ -8,9 +8,9 @@ import (
 	"path"
 
 	ipfsfiles "github.com/ipfs/boxo/files"
-	car "github.com/photon-storage/go-ipfs-car"
 
 	"github.com/photon-storage/go-gw3/common/http"
+	car "github.com/photon-storage/go-ipfs-car"
 )
 
 const (
