@@ -1,6 +1,8 @@
 package gw3
 
 import (
+	"bytes"
+	"encoding/json"
 	"fmt"
 	"net/http"
 )
@@ -49,4 +51,32 @@ func (c *Client) UpdateIPNS(name, value string) error {
 
 	r := &ipnsResp{}
 	return c.callGateway(req, r)
+}
+
+// ImportIPNSReq defines the request payload for importing an IPNS record
+type ImportIPNSReq struct {
+	Name      string `json:"name"`
+	Value     string `json:"value"`
+	SecretKey string `json:"secret_key"`
+	Format    string `json:"format"`
+	Seq       uint64 `json:"seq"`
+}
+
+// ImportIPNS imports an IPNS record using a user-side generated private key.
+func (c *Client) ImportIPNS(body *ImportIPNSReq) error {
+	b, err := json.Marshal(body)
+	if err != nil {
+		return err
+	}
+
+	req, err := http.NewRequest(
+		http.MethodPost,
+		fmt.Sprintf("%s/api/v0/name/import", c.endPoint),
+		bytes.NewReader(b),
+	)
+	if err != nil {
+		return err
+	}
+
+	return c.callGateway(req, nil)
 }
