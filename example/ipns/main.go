@@ -36,4 +36,15 @@ func main() {
 		panic(err)
 	}
 	fmt.Println("update IPNS success!")
+
+	// Import the existed IPNS record to GW3
+	if err := client.ImportIPNS(&gw3.ImportIPNSReq{
+		Name:      "YOUR_IPNS_NAME",
+		Value:     "QmP9CWpPWPZmGHKytXf2eqwTrwKjw3tBq52hMLKrYicaG4",
+		SecretKey: "YOUR_SECRET_TEXT",
+		Format:    "pem-pkcs8-cleartext",
+		Seq:       1,
+	}); err != nil {
+		fmt.Println("fail to import IPNS: ", err)
+	}
 }
