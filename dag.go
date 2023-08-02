@@ -97,7 +97,7 @@ func (c *Client) DAGRemove(root, path string) (string, error) {
 }
 
 // AuthDAGImport requests Gateway3 for an authorized redirect URL for uploading a CAR file.
-func (c *Client) AuthDAGImport(size int, boundary string) (string, error) {
+func (c *Client) AuthDAGImport(size int) (string, error) {
 	req, err := gohttp.NewRequest(
 		gohttp.MethodPost,
 		fmt.Sprintf("%s/api/v0/dag/import", c.endPoint),
@@ -109,7 +109,6 @@ func (c *Client) AuthDAGImport(size int, boundary string) (string, error) {
 
 	query := req.URL.Query()
 	query.Set(http.ParamP3Size, fmt.Sprintf("%v", size))
-	query.Set(http.ParamP3Boundary, boundary)
 	req.URL.RawQuery = query.Encode()
 
 	var r redirect
@@ -136,7 +135,7 @@ func (c *Client) DAGImport(src any) (string, error) {
 		true,
 	)
 
-	url, err := c.AuthDAGImport(buf.Len(), r.Boundary())
+	url, err := c.AuthDAGImport(buf.Len())
 	if err != nil {
 		return "", err
 	}
@@ -146,6 +145,7 @@ func (c *Client) DAGImport(src any) (string, error) {
 		return "", err
 	}
 
+	req.Header.Set("Content-Type", "multipart/form-data; boundary="+r.Boundary())
 	resp, err := c.hc.Do(req)
 	if err != nil {
 		return "", err
